@@ -1,0 +1,9 @@
+# Local PowerShell/editor state
+.vscode/
+*.log
+*.tmp
+*.bak
+
+# Scoop cache / downloaded binaries (never commit release archives)
+cache/
+*.zip

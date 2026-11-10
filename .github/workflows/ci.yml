@@ -1,0 +1,22 @@
+name: Bucket CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate manifests
+    runs-on: windows-latest
+    steps:
+      - name: Check out bucket
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate Sally manifest
+        shell: pwsh
+        run: ./scripts/Test-Bucket.ps1
