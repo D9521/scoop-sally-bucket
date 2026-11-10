@@ -1,5 +1,6 @@
 # Personal Scoop Bucket — Sally
 
+這是AI自動生成的scoop bucket方案，以下是其內容：
 這是一個以 **Sally** 為目前唯一套件的個人 Scoop Bucket 初始專案。
 
 - Sally 官方專案：https://github.com/0xeb/sally

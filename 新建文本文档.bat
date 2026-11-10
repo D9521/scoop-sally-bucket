@@ -1,9 +1,3 @@
-git init
-git branch -M main
-
 git add .
-git commit -m "Initial Sally bucket"
-
-git remote add origin https://github.com/D9521/scoop-sally-bucket.git
-
+git commit -m "This scoop bucket changed"
 git push -u origin main
