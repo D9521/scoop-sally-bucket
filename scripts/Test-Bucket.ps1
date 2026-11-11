@@ -4,53 +4,87 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$manifestPath = Join-Path $BucketPath 'sally.json'
-if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
-    throw "Missing manifest: $manifestPath"
+
+function Read-Manifest([string]$Name) {
+    $path = Join-Path $BucketPath "$Name.json"
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "Missing manifest: $path"
+    }
+    return (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json)
 }
 
-$manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+# Sally
+$sally = Read-Manifest 'sally'
 
-if ($manifest.version -notmatch '^\d+(\.\d+){1,3}$') {
-    throw "Invalid or missing version: '$($manifest.version)'"
+if ($sally.version -notmatch '^\d+(\.\d+){1,3}$') {
+    throw "Invalid Sally version: '$($sally.version)'"
 }
-if ($manifest.homepage -ne 'https://get-sally.app/') {
+if ($sally.homepage -ne 'https://get-sally.app/') {
     throw 'Unexpected Sally homepage.'
 }
-if ($manifest.checkver.github -ne 'https://github.com/0xeb/sally') {
+if ($sally.checkver.github -ne 'https://github.com/0xeb/sally') {
     throw 'checkver.github must point to the official Sally repository.'
 }
-if ($manifest.bin -ne 'sally.exe') {
-    throw "Expected bin to be 'sally.exe'."
+if ($sally.bin -ne 'sally.exe') {
+    throw "Expected Sally bin to be 'sally.exe'."
 }
 
-$expected = @{
+$sallyArchitectures = @{
     '64bit' = 'x64'
     '32bit' = 'x86'
     'arm64' = 'ARM64'
 }
-
-foreach ($arch in $expected.Keys) {
-    $entry = $manifest.architecture.($arch)
-    if (-not $entry) { throw "Missing architecture block: $arch" }
-    if ($entry.url -notmatch [regex]::Escape("Sally-v$($manifest.version)-$($expected[$arch]).zip")) {
-        throw "Unexpected $arch download URL: $($entry.url)"
+foreach ($arch in $sallyArchitectures.Keys) {
+    $entry = $sally.architecture.($arch)
+    if (-not $entry) { throw "Sally is missing architecture block: $arch" }
+    if ($entry.url -notmatch [regex]::Escape("Sally-v$($sally.version)-$($sallyArchitectures[$arch]).zip")) {
+        throw "Unexpected Sally $arch download URL: $($entry.url)"
     }
     if ($entry.hash -notmatch '^[a-fA-F0-9]{64}$') {
-        throw "The $arch SHA-256 is not initialized. Run .\scripts\Update-SallyManifest.ps1 first."
+        throw "Sally $arch SHA-256 is not initialized. Run .\scripts\Update-SallyManifest.ps1 first."
+    }
+    $autoUrl = $sally.autoupdate.architecture.($arch).url
+    if ($autoUrl -notmatch [regex]::Escape("Sally-v`$version-$($sallyArchitectures[$arch]).zip")) {
+        throw "Invalid Sally autoupdate URL for $arch."
     }
 }
+if ($sally.autoupdate.hash.url -ne 'https://github.com/0xeb/sally/releases/download/v$version/Sally-v$version-SHA256SUMS.txt') {
+    throw 'Unexpected Sally autoupdate checksum URL.'
+}
 
-foreach ($arch in $expected.Keys) {
-    $url = $manifest.autoupdate.architecture.($arch).url
-    if ($url -notmatch [regex]::Escape("Sally-v`$version-$($expected[$arch]).zip")) {
-        throw "Invalid autoupdate URL for $arch."
+# RPG Maker VX Ace RTP
+$rtp = Read-Manifest 'rpg-vx-ace-rtp'
+
+if ($rtp.version -ne '1.00') {
+    throw "Unexpected RPG Maker VX Ace RTP version: '$($rtp.version)'"
+}
+if ($rtp.homepage -ne 'https://www.rpgmakerweb.com/run-time-package') {
+    throw 'Unexpected RTP homepage.'
+}
+if ($rtp.url -ne 'https://assets.rpgmakerweb.com/RPGVXAce_RTP.zip') {
+    throw 'RTP must download directly from the official RPG Maker website.'
+}
+if ($rtp.hash -notmatch '^[a-fA-F0-9]{64}$') {
+    throw 'RTP SHA-256 is not initialized. Run .\scripts\Initialize-RtpManifest.ps1 first.'
+}
+if ($rtp.innosetup -ne $true) {
+    throw 'RTP installer must be identified as Inno Setup.'
+}
+if ($rtp.installer.file -ne 'RPGVXAce_RTP100\Setup.exe') {
+    throw 'Unexpected RTP installer path.'
+}
+$requiredArgs = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-')
+foreach ($arg in $requiredArgs) {
+    if ($rtp.installer.args -notcontains $arg) {
+        throw "RTP installer is missing required argument: $arg"
     }
 }
-
-if ($manifest.autoupdate.hash.url -ne 'https://github.com/0xeb/sally/releases/download/v$version/Sally-v$version-SHA256SUMS.txt') {
-    throw 'Unexpected autoupdate checksum URL.'
+if (($rtp.pre_install -join ' ') -notmatch '\$global') {
+    throw 'RTP must block per-user installation and require a global install.'
+}
+if (($rtp.uninstaller.script -join ' ') -notmatch 'unins000\.exe') {
+    throw 'RTP uninstaller script does not reference the vendor uninstaller.'
 }
 
-Write-Host "PASS: sally.json is valid and all three architecture hashes are initialized." -ForegroundColor Green
-Write-Host "Current version: $($manifest.version)"
+Write-Host 'PASS: Sally manifest is valid and initialized.' -ForegroundColor Green
+Write-Host 'PASS: RPG Maker VX Ace RTP manifest is valid, uses the official URL, has a pinned SHA-256, and requires global installation.' -ForegroundColor Green

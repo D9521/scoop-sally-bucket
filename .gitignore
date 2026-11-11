@@ -1,9 +1,10 @@
-# Local PowerShell/editor state
+# Local editor state
 .vscode/
 *.log
 *.tmp
 *.bak
 
-# Scoop cache / downloaded binaries (never commit release archives)
+# Never commit downloaded installers or archives
 cache/
 *.zip
+RPGVXAce_RTP.zip
